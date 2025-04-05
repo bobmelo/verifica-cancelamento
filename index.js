@@ -2,26 +2,27 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./projeto_cancelamento_vadzap.json");
+// Lê a chave do Firebase do ambiente
+const firebaseConfig = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(firebaseConfig)
 });
 
 const db = admin.firestore();
 
 const app = express();
-const PORTA = 3000;
+const PORTA = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
 app.post("/verificar", async (req, res) => {
-  console.log("Recebido do Pabbly:", req.body);
+  console.log("Recebido:", req.body);
 
   const numero = req.body.input5;
 
   if (!numero) {
-    return res.status(400).json({ sucesso: false, mensagem: "Campo 'input5' não foi enviado." });
+    return res.status(400).json({ sucesso: false, mensagem: "Campo 'input5' não enviado." });
   }
 
   const COLECAO = "cancelamento";
@@ -30,7 +31,7 @@ app.post("/verificar", async (req, res) => {
     const snapshot = await db.collection(COLECAO).get();
 
     if (snapshot.empty) {
-      return res.json({ sucesso: false, mensagem: "Nenhum documento encontrado na coleção." });
+      return res.json({ sucesso: false, mensagem: "Nenhum documento encontrado." });
     }
 
     let encontrado = false;
@@ -39,10 +40,7 @@ app.post("/verificar", async (req, res) => {
       const dados = doc.data();
 
       const contemNumero = Object.values(dados).some((valor) => {
-        if (typeof valor === "string" && valor.includes(numero)) {
-          return true;
-        }
-        return false;
+        return typeof valor === "string" && valor.includes(numero);
       });
 
       if (contemNumero) {
@@ -66,5 +64,5 @@ app.post("/verificar", async (req, res) => {
 });
 
 app.listen(PORTA, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORTA}/verificar`);
+  console.log(`🚀 Servidor rodando na porta ${PORTA}`);
 });
